@@ -1,0 +1,533 @@
+/**
+ * The Class AES.
+ * 
+ * @author ajitesh
+ */
+public class AES{
+
+	/** The self ref. */
+	static AES selfRef;
+
+	/**
+	 * Instantiates a new aES.
+	 */
+	public AES() {
+	
+	}
+
+	/**
+	 * Gets the single instance of AES.
+	 * 
+	 * @return single instance of AES
+	 */
+	public static AES getInstance() {
+		if (selfRef == null) {
+			selfRef = new AES();
+		}
+		return selfRef;
+	}
+
+	/**
+	 * Pad data.
+	 * 
+	 * @param input the input
+	 * 
+	 * @return the byte[]
+	 */
+	byte[] padData(byte[] input) {
+		byte[] result;
+
+		int length;
+
+		AESEngine engine = new AESEngine();
+
+		int blockSize = engine.getBlockSize();
+
+		if (input.length % blockSize > 0) {
+			length = (input.length / blockSize) * blockSize + blockSize;
+		} else {
+			length = input.length;
+		}
+
+		result = new byte[length];
+
+		System.arraycopy(input, 0, result, 0, input.length);
+
+		if (length > input.length) {
+
+			PKCS7Padding pad = new PKCS7Padding();
+
+			pad.init(new SecureRandom());
+
+			pad.addPadding(result, input.length);
+		}
+		return result;
+	}
+
+	/**
+	 * Unpad data.
+	 * 
+	 * @param input the input
+	 * 
+	 * @return the byte[]
+	 */
+	byte[] unpadData(byte[] input) {
+
+		byte[] result;
+
+		AESEngine engine = new AESEngine();
+
+		int blockSize = engine.getBlockSize();
+
+		byte[] padding = new byte[blockSize];
+
+		System.arraycopy(input, (input.length < blockSize ? 0 : (input.length
+				/ blockSize - 1))
+				* blockSize, padding, 0, blockSize);
+
+		char val = (char) padding[blockSize - 1];
+		if (!checkPadding(padding, val)) {
+			return input;
+		} else {
+			result = new byte[input.length - val];
+			System.arraycopy(input, 0, result, 0, result.length);
+			return result;
+
+		}
+	}
+
+	/**
+	 * Check padding.
+	 * 
+	 * @param data the data
+	 * @param val the val
+	 * 
+	 * @return true, if successful
+	 */
+	boolean checkPadding(byte[] data, char val) {
+		if (val > data.length) {
+			return false;
+		} else {
+			int start = data.length - val;
+			for (int i = start; i < data.length; i++) {
+				if (data[i] != val) {
+					return false;
+				}
+			}
+			return true;
+		}
+
+	}
+
+	/**
+	 * Encryptes a byte array using AES KeyParameter Returns the result as byte
+	 * array.
+	 * 
+	 * @param data byte array of data.
+	 * @param kp Keyparameter of AES key
+	 * 
+	 * @return byte array of the result
+	 */
+	private byte[] encrypt(byte[] data, KeyParameter kp) {
+
+		byte[] result = new byte[0];
+
+		AESEngine engine = new AESEngine();
+		engine.init(true, kp);
+
+		data = padData(data); // /Check
+
+		int encryptedLength = 0;// data.length;
+		do {
+			byte[] encryptBase = new byte[engine.getBlockSize()];
+
+			engine.processBlock(data, encryptedLength, encryptBase, 0);
+
+			byte[] encryptMore = new byte[result.length + engine.getBlockSize()];
+
+			System.arraycopy(result, 0, encryptMore, 0, result.length);
+			System.arraycopy(encryptBase, 0, encryptMore, result.length,
+					encryptBase.length);
+
+			result = encryptMore;
+			encryptedLength += engine.getBlockSize();
+
+		} while (encryptedLength < data.length);
+
+		return result;
+	}
+
+	/**
+	 * Decryptes a byte array using AES KeyParameter Returns the result as byte
+	 * array.
+	 * 
+	 * @param data byte array of data.
+	 * @param kp Keyparameter of AES key
+	 * 
+	 * @return byte array of the result
+	 */
+	private byte[] decrypt(byte[] data, KeyParameter kp) {
+		byte[] result = new byte[0];
+
+		AESEngine engine = new AESEngine();
+		engine.init(false, kp);
+
+		int encryptedLength = 0;// data.length;
+		do {
+			byte[] encryptBase = new byte[engine.getBlockSize()];
+
+			engine.processBlock(data, encryptedLength, encryptBase, 0);
+
+			byte[] encryptMore = new byte[result.length + engine.getBlockSize()];
+
+			System.arraycopy(result, 0, encryptMore, 0, result.length);
+			System.arraycopy(encryptBase, 0, encryptMore, result.length,
+					encryptBase.length);
+
+			result = encryptMore;
+			encryptedLength += engine.getBlockSize();
+
+		} while (encryptedLength < data.length);
+
+		result = unpadData(result);// Check
+		return result;
+	}
+
+	/**
+	 * Creates the key.
+	 * 
+	 * @param keyLength the key length
+	 * 
+	 * @return the byte[]
+	 */
+	public byte[] createKey(int keyLength) {
+		// BC only supporting 256 bit key length
+
+		if (keyLength > 32 || keyLength < 16) {
+			System.out.println("Key length should be between 16 and 32 bytes.");
+			return null;
+		}
+
+		if (keyLength % 8 == 0) {
+			return SecureRandom.getSeed(keyLength);
+
+		} else {
+			System.out.println("Key length invalid.");
+			return null;
+
+		}
+	}
+
+	/**
+	 * Encryptes a byte array using AES key as byte array Returns the result as
+	 * byte array.
+	 * 
+	 * @param data byte array of data.
+	 * @param key byte array of AES key
+	 * 
+	 * @return byte array of the result
+	 */
+	public byte[] encrypt(byte[] data, byte[] key) {
+
+		KeyParameter kp = new KeyParameter(key);
+
+		byte[] result = encrypt(data, kp);
+
+		return result;
+	}
+
+	/**
+	 * Encryptes a byte array reading AES key from a file Returns the result as
+	 * byte array.
+	 * 
+	 * @param data byte array of data.
+	 * @param file String giving absolute path of the file containg AES key.
+	 * 
+	 * @return byte array of the result
+	 */
+	public byte[] encrypt(byte[] data, String file) {
+		byte[] keyData = null;
+		try {
+			FileInputStream fstream = new FileInputStream(file);
+			DataInputStream in = new DataInputStream(fstream);
+
+			in.read(keyData);
+			in.close();
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		KeyParameter kp = new KeyParameter(keyData);
+
+		return encrypt(data, kp);
+
+	}
+
+	/**
+	 * Encrypt.
+	 * 
+	 * @param inputFile the input file
+	 * @param keyFile the key file
+	 * 
+	 * @return the byte[]
+	 */
+	public byte[] encrypt(String inputFile, String keyFile) {
+		byte[] data = null;
+		try {
+			FileInputStream fstream = new FileInputStream(inputFile);
+			DataInputStream in = new DataInputStream(fstream);
+
+			in.read(data);
+			in.close();
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		byte[] keyData = null;
+		try {
+			FileInputStream fstream = new FileInputStream(keyFile);
+			DataInputStream in = new DataInputStream(fstream);
+
+			in.read(keyData);
+			in.close();
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		KeyParameter kp = new KeyParameter(keyData);
+
+		return encrypt(data, kp);
+	}
+
+	/**
+	 * Encrypt.
+	 * 
+	 * @param inputFile the input file
+	 * @param key the key
+	 * 
+	 * @return the byte[]
+	 */
+	public byte[] encrypt(String inputFile, byte[] key) {
+		byte[] data = null;
+		try {
+			FileInputStream fstream = new FileInputStream(inputFile);
+			DataInputStream in = new DataInputStream(fstream);
+
+			in.read(data);
+			in.close();
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		KeyParameter kp = new KeyParameter(key);
+
+		return encrypt(data, kp);
+	}
+
+	/**
+	 * Decrypt.
+	 * 
+	 * @param inputFile the input file
+	 * @param keyFile the key file
+	 * 
+	 * @return the byte[]
+	 */
+	public byte[] decrypt(String inputFile, String keyFile) {
+		byte[] data = null;
+		try {
+			FileInputStream fstream = new FileInputStream(inputFile);
+			DataInputStream in = new DataInputStream(fstream);
+
+			in.read(data);
+			in.close();
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		byte[] keyData = null;
+		try {
+			FileInputStream fstream = new FileInputStream(keyFile);
+			DataInputStream in = new DataInputStream(fstream);
+
+			in.read(keyData);
+			in.close();
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		KeyParameter kp = new KeyParameter(keyData);
+
+		return decrypt(data, kp);
+	}
+
+	/**
+	 * Decrypt.
+	 * 
+	 * @param inputFile the input file
+	 * @param key the key
+	 * 
+	 * @return the byte[]
+	 */
+	public byte[] decrypt(String inputFile, byte[] key) {
+		byte[] data = null;
+		try {
+			FileInputStream fstream = new FileInputStream(inputFile);
+			DataInputStream in = new DataInputStream(fstream);
+
+			in.read(data);
+			in.close();
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		KeyParameter kp = new KeyParameter(key);
+
+		return decrypt(data, kp);
+	}
+
+	/**
+	 * Decryptes a byte array using AES key as byte array Returns the result as
+	 * byte array.
+	 * 
+	 * @param data byte array of data.
+	 * @param key byte array of AES key
+	 * 
+	 * @return byte array of the result
+	 */
+	public byte[] decrypt(byte[] data, byte[] key) {
+
+		KeyParameter kp = new KeyParameter(key);
+
+		return decrypt(data, kp);
+
+	}
+
+	/**
+	 * Decryptes a byte array reading AES key from a file Returns the result as
+	 * byte array.
+	 * 
+	 * @param data byte array of data.
+	 * @param keyFile the key file
+	 * 
+	 * @return byte array of the result
+	 */
+	public byte[] decrypt(byte[] data, String keyFile) {
+
+		byte[] keyData = null;
+		try {
+			FileInputStream fstream = new FileInputStream(keyFile);
+			DataInputStream in = new DataInputStream(fstream);
+
+			in.read(keyData);
+			in.close();
+
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		KeyParameter kp = new KeyParameter(keyData);
+
+		return decrypt(data, kp);
+
+	}
+
+	
+	
+	/**
+	 * Read key.
+	 * 
+	 * @param fileName the file name
+	 * 
+	 * @return the byte[]
+	 */
+	public byte[] readKey(String fileName) {
+		try {
+			byte[] data = null;
+			FileInputStream fstream = new FileInputStream(fileName);
+			DataInputStream in = new DataInputStream(fstream);
+
+			in.read(data);
+			in.close();
+
+			return data;
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	
+
+	/**
+	 * Write key.
+	 * 
+	 * @param fileName the file name
+	 * @param key the key
+	 */
+	public void writeKey(String fileName, byte[] key) {
+		try {
+			FileOutputStream fo = new FileOutputStream(fileName);
+			PrintStream ot = new PrintStream(fo);
+			ot.println(key);
+			ot.close();
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
+	@SuppressWarnings("deprecation")
+	public static void main(String[] args){
+		AES a1 = new AES();
+		byte[] key1=null, encr=null, outp= null;
+		String inpu = null;
+		key1=a1.createKey(16);
+//		a1.writeKey("testing", key1);
+		
+		
+		try {
+			FileInputStream fstream = new FileInputStream("inp1");
+			DataInputStream in = new DataInputStream(fstream);
+
+			inpu=in.readLine();
+			in.close();
+			encr=a1.encrypt(inpu.getBytes(), key1);
+			outp = a1.decrypt(encr, key1);
+			
+			System.out.println("Input data :" + inpu);
+			String str = new String(outp);
+			System.out.println("Decrypted data :" + str);
+			if (str.equalsIgnoreCase(inpu)) {
+				System.out.print("True");
+			} else {
+				System.out.print("False");
+			}
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
+	
+	}
+	
+}
+

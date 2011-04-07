@@ -1,0 +1,613 @@
+/**
+ * The Class RSA.
+ * 
+ * @author ajitesh
+ */
+public class RSA {
+
+	/** The pub key1. */
+	private RSAKeyParameters pubKey1;
+
+	/** The priv key. */
+	private RSAKeyParameters privKey1, privKey;
+
+	/** The input1. */
+	private byte[] input1;
+
+
+
+	/**
+	 * Test.
+	 */
+	public RSA() {
+		
+	}
+
+	public void test() {
+		int strength = 16;
+		int counter = 0;
+		while (counter < 1) {
+			realtest(strength);
+			counter++;
+			// strength = strength * 2;
+		}
+	}
+
+	/**
+	 * Pad data.
+	 * 
+	 * @param input
+	 *            the input
+	 * @param engine
+	 *            the engine
+	 * 
+	 * @return the byte[]
+	 */
+	public static byte[] padData(byte[] input, RSAEngine engine) {
+		byte[] result;
+
+		int length;
+
+		int blockSize = engine.getOutputBlockSize();
+
+		if (input.length % blockSize > 0) {
+			length = (input.length / blockSize) * blockSize + blockSize;
+		} else {
+			length = input.length;
+		}
+
+		result = new byte[length];
+
+		System.arraycopy(input, 0, result, 0, input.length);
+
+		if (length > input.length) {
+
+			PKCS7Padding pad = new PKCS7Padding();
+
+			pad.init(new SecureRandom());
+
+			pad.addPadding(result, input.length);
+		}
+		return result;
+	}
+
+	/**
+	 * Unpad data.
+	 * 
+	 * @param input
+	 *            the input
+	 * @param engine
+	 *            the engine
+	 * 
+	 * @return the byte[]
+	 */
+	public static byte[] unpadData(byte[] input, RSAEngine engine) {
+
+		byte[] result;
+		int blockSize = engine.getInputBlockSize();
+
+		byte[] padding = new byte[blockSize];
+
+		System.arraycopy(input, (input.length < blockSize ? 0 : (input.length
+				/ blockSize - 1))
+				* blockSize, padding, 0, blockSize);
+
+		char val = (char) padding[blockSize - 1];
+		if (!checkPadding(padding, val)) {
+			return input;
+		} else {
+			result = new byte[input.length - val];
+			System.arraycopy(input, 0, result, 0, result.length);
+
+			return result;
+
+		}
+	}
+
+	/**
+	 * Check padding.
+	 * 
+	 * @param data
+	 *            the data
+	 * @param val
+	 *            the val
+	 * 
+	 * @return true, if successful
+	 */
+	public static boolean checkPadding(byte[] data, char val) {
+		if (val > data.length) {
+			return false;
+		} else {
+			int start = data.length - val;
+			for (int i = start; i < data.length; i++) {
+				if (data[i] != val) {
+					return false;
+				}
+			}
+			return true;
+		}
+
+	}
+
+	/**
+	 * Realtest.
+	 * 
+	 * @param strength
+	 *            the strength
+	 */
+	@SuppressWarnings("deprecation")
+	private void realtest(int strength) {
+		try {
+			System.out.print("Strength " + strength + "  : ");
+
+			AsymmetricCipherKeyPair ackp = null;
+
+			ackp = createKeyPair(strength);
+
+			pubKey1 = (RSAKeyParameters) ackp.getPublic();
+
+			privKey1 = (RSAKeyParameters) ackp.getPrivate();
+
+			// BigInteger mod = privKey1.getModulus();
+			// BigInteger exp = privKey1.getExponent();
+			//
+			// FileManager.writeFile(Constants.KEY_PATH + "mod",
+			// mod.toString());
+			// FileManager.writeFile(Constants.KEY_PATH + "exp",
+			// exp.toString());
+
+			writeKey( "priv", privKey1);
+			RSAEngine re = new RSAEngine();
+
+			//String input = "0123456789abcdef$%m,dfglshnlnvlvgkhlieethcnlwyi3295490823745973njhw98744890nveeutpm38c5pmtoihweilchekthweilhvnilethiue iwehiteywhilt myve9t yilweth 89tloehgilwe yti yweioltyhwilei ytlweyt yeweyt ywelity we lit yweilyt 0927 59488ht kn 947y 9e hglweth 489p8eow4hy  to92468987yt&*%*&%*^&^((&*((*&(   sdkjhgjhgkgkhkgkjghkj";
+			String input;
+			FileInputStream fstream = new FileInputStream("inp");
+			DataInputStream in = new DataInputStream(fstream);
+
+			input=in.readLine();
+			in.close();
+			System.out.println("The data stored in the file is :" + input);
+			input1 = input.getBytes();
+			re.init(true, pubKey1);
+			byte[] edata = encrypt(input1, re);
+
+			// mod = new BigInteger(new
+			// String(FileManager.readFile(Constants.KEY_PATH + "mod")));
+			// exp = new BigInteger(new
+			// String(FileManager.readFile(Constants.KEY_PATH + "exp")));
+			// privKey = new RSAKeyParameters(true, mod, exp);
+
+			privKey = readKey( "priv", true);
+
+			re.init(false, privKey);
+
+			byte[] result = decrypt(edata, re);
+			// System.out.println(input);
+			//
+			// AES aes = new AES();
+			// byte[] aesKey = aes.createKey(16);
+			//
+			// String aeskeystr = byteToHex(aesKey);
+			//
+			// //System.out.print("AES Key " + aesKey.length + " : " +
+			// byteToHex(aesKey));
+			//
+			//
+			// byte[] aesEData = aes.encrypt(input1, aesKey);
+			//
+			//
+			// re.init(true, pubKey1);
+			//
+			//
+			// //System.out.println("Engine E O: " + re.getOutputBlockSize());
+			//
+			// byte[] aesEKey = encrypt(aeskeystr.getBytes(), re);
+			//
+			// //System.out.println("AES Key encrypted: " + aesEKey.length +
+			// " : " + byteToHex(aesEKey));
+			//
+			//
+			// re.init(false, privKey1);
+			// //System.out.println("Engine D I: " + re.getInputBlockSize());
+			//
+			// byte[] aesKey2 = decrypt(aesEKey, re);
+			//
+			// aesKey2 = hexToByte(new String(aesKey2));
+			//
+			// //System.out.println("AES Key decrypted: " + byteToHex(aesKey2));
+			//
+			//
+			// byte[] result = aes.decrypt(aesEData, aesKey2);
+
+			String str = new String(result);
+			System.out.println("Decrypted data :" + str);
+			if (str.equalsIgnoreCase(input)) {
+				System.out.print("True");
+			} else {
+				System.out.print("False");
+			}
+
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+		}
+
+		System.out.println(" ending.");
+
+	}
+
+	/**
+	 * Creates the key pair.
+	 * 
+	 * @param strength
+	 *            the strength
+	 * 
+	 * @return the asymmetric cipher key pair
+	 */
+	public AsymmetricCipherKeyPair createKeyPair(int strength) {
+
+		AsymmetricCipherKeyPair ackp;
+		RSAKeyGenerationParameters rkgp;
+		RSAKeyPairGenerator rkg;
+
+		SecureRandom random = new SecureRandom();
+		random.setSeed(System.currentTimeMillis());
+
+		BigInteger p = BigInteger.probablePrime(strength, random);
+
+		rkgp = new RSAKeyGenerationParameters(p, random, strength, 0);
+		rkg = new RSAKeyPairGenerator();
+		rkg.init(rkgp);
+		ackp = rkg.generateKeyPair();
+
+		return ackp;
+	}
+
+	/**
+	 * Encrypt.
+	 * 
+	 * @param data
+	 *            the data
+	 * @param engine
+	 *            the engine
+	 * 
+	 * @return the byte[]
+	 */
+	private byte[] encrypt(byte[] data, RSAEngine engine) {
+
+		byte[] result = new byte[0];
+		int start = 0;
+
+		data = padData(data, engine); // /Check
+
+		int encryptedLength = 0;// data.length;
+		do {
+			byte[] encryptBase = new byte[engine.getOutputBlockSize()];
+
+			encryptBase = engine.processBlock(data, start, encryptBase.length);
+
+			byte[] encryptMore = new byte[result.length
+					+ engine.getOutputBlockSize()];
+
+			System.arraycopy(result, 0, encryptMore, 0, result.length);
+			System.arraycopy(encryptBase, 0, encryptMore, result.length,
+					encryptBase.length);
+
+			result = encryptMore;
+			encryptedLength += engine.getOutputBlockSize();
+			start = encryptedLength;
+		} while (encryptedLength < data.length);
+
+		return result;
+	}
+
+	/**
+	 * Decrypt.
+	 * 
+	 * @param data
+	 *            the data
+	 * @param engine
+	 *            the engine
+	 * 
+	 * @return the byte[]
+	 */
+	private byte[] decrypt(byte[] data, RSAEngine engine) {
+		byte[] result = new byte[0];
+		int start = 0;
+		int encryptedLength = 0;// data.length;
+		do {
+
+			byte[] encryptBase;// = new byte[engine.getOutputBlockSize()];
+			encryptBase = engine.processBlock(data, start, engine
+					.getInputBlockSize());
+
+			byte[] encryptMore = new byte[result.length + encryptBase.length];
+
+			System.arraycopy(result, 0, encryptMore, 0, result.length);
+
+			System.arraycopy(encryptBase, 0, encryptMore, result.length,
+					encryptBase.length);
+
+			result = encryptMore;
+			encryptedLength += encryptBase.length;
+			start = encryptedLength;
+
+		} while (encryptedLength < data.length);
+
+		result = unpadData(result, engine);
+		return result;
+	}
+
+	/**
+	 * Write key.
+	 * 
+	 * @param str
+	 *            the str
+	 * @param key
+	 *            the key
+	 */
+	public void writeKey(String str, RSAKeyParameters key) {
+		//boolean flag = key.isPrivate();
+	BigInteger exp = key.getExponent();
+		BigInteger mod = key.getModulus();
+
+		String buf = exp.toString() + " " + mod.toString();
+		System.out.println(buf);
+
+		try {
+			FileOutputStream fo = new FileOutputStream(str);
+			PrintStream ot = new PrintStream(fo);
+			ot.println(buf);
+			ot.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
+
+	/**
+	 * Read key.
+	 * 
+	 * @param str
+	 *            the str
+	 * @param isPriv
+	 *            the is priv
+	 * 
+	 * @return the rSA key parameters
+	 */
+	@SuppressWarnings("deprecation")
+	public RSAKeyParameters readKey(String str, boolean isPriv) {
+		RSAKeyParameters key;
+
+		String contents = null;
+		try {
+		//function to read from file str and return the contents to create a string
+			FileInputStream fstream = new FileInputStream(str);
+			DataInputStream in = new DataInputStream(fstream);
+
+			
+			contents = new String(in.readLine());
+			in.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		StringTokenizer st = new StringTokenizer(contents);
+
+		BigInteger exp = new BigInteger(st.nextToken());
+		BigInteger mod = new BigInteger(st.nextToken());
+
+		System.out.println("Read: " + exp.toString() + " " + mod.toString());
+		key = new RSAKeyParameters(isPriv, mod, exp);
+		return key;
+	}
+
+	public RSAKeyParameters readKeyData(String str, boolean isPriv) {
+		RSAKeyParameters key;
+
+		StringTokenizer st = new StringTokenizer(str);
+
+		BigInteger exp = new BigInteger(st.nextToken());
+		BigInteger mod = new BigInteger(st.nextToken());
+
+		System.out.println("Read: " + exp.toString() + " " + mod.toString());
+		key = new RSAKeyParameters(isPriv, mod, exp);
+		return key;
+	}
+
+	/**
+	 * Encrypt aes key.
+	 * 
+	 * @param aesKey
+	 *            the aes key
+	 * @param re
+	 *            the re
+	 * 
+	 * @return the byte[]
+	 */
+	/*public byte[] encryptAESKey(byte[] aesKey, RSAEngine re) {
+		String aesKeyStr = Methods.byteToHex(aesKey);
+
+		return encrypt(aesKeyStr.getBytes(), re);
+
+	}*/
+
+	/**
+	 * Decrypt aes key.
+	 * 
+	 * @param aesKey
+	 *            the aes key
+	 * @param re
+	 *            the re
+	 * 
+	 * @return the byte[]
+	 */
+	/*public byte[] decryptAESKey(byte[] aesKey, RSAEngine re) {
+
+		byte[] aesKeyHex = decrypt(aesKey, re);
+
+		return Methods.hexToByte(new String(aesKeyHex));
+
+	}*/
+
+	/**
+	 * Encrypt.
+	 * 
+	 * @param inputFile
+	 *            the input file
+	 * @param keyFile
+	 *            the key file
+	 * 
+	 * @return the byte[]
+	 */
+	
+	public byte[] encrypt(String inputFile, String keyFile) {
+		
+		RSAKeyParameters pubKey = readKey(keyFile, false);
+		RSAEngine eng = new RSAEngine();
+		eng.init(true, pubKey);
+		byte[] data = null;
+		try {
+			FileInputStream fstream = new FileInputStream(inputFile);
+			DataInputStream in = new DataInputStream(fstream);
+
+			in.read(data);
+			in.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return encrypt(data, eng);
+	}
+
+	/**
+	 * Encrypt.
+	 * 
+	 * @param input
+	 *            the input
+	 * @param keyFile
+	 *            the key file
+	 * 
+	 * @return the byte[]
+	 */
+	public byte[] encrypt(byte[] input, String keyFile) {
+		RSAKeyParameters pubKey = readKey(keyFile, true);
+		RSAEngine eng = new RSAEngine();
+		eng.init(true, pubKey);
+
+		return encrypt(input, eng);
+	}
+
+	/**
+	 * Decrypt.
+	 * 
+	 * @param inputFile
+	 *            the input file
+	 * @param keyFile
+	 *            the key file
+	 * 
+	 * @return the byte[]
+	 */
+	public byte[] decrypt(String inputFile, String keyFile) {
+		RSAKeyParameters priKey = readKey(keyFile, true);
+		RSAEngine eng = new RSAEngine();
+		eng.init(false, priKey);
+		byte[] data = null;
+		try {
+			FileInputStream fstream = new FileInputStream(inputFile);
+			DataInputStream in = new DataInputStream(fstream);
+
+			in.read(data);
+			in.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return decrypt(data, eng);
+	}
+
+	/**
+	 * Decrypt.
+	 * 
+	 * @param input
+	 *            the input
+	 * @param keyFile
+	 *            the key file
+	 * 
+	 * @return the byte[]
+	 */
+	public byte[] decrypt(byte[] input, String keyFile) {
+		RSAKeyParameters priKey = readKey(keyFile, true);
+		RSAEngine eng = new RSAEngine();
+		eng.init(false, priKey);
+
+		return decrypt(input, eng);
+	}
+
+	public byte[] decrypt(String inputFile, byte[] keyData) {
+		RSAKeyParameters priKey = readKeyData(new String(keyData), true);
+		RSAEngine eng = new RSAEngine();
+		eng.init(false, priKey);
+		byte[] data = null;
+		try {
+			FileInputStream fstream = new FileInputStream(inputFile);
+			DataInputStream in = new DataInputStream(fstream);
+
+			in.read(data);
+			in.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return decrypt(data, eng);
+	}
+
+	public byte[] decrypt(byte[] input, byte[] keyData) {
+		RSAKeyParameters priKey = readKeyData(new String(keyData), true);
+		RSAEngine eng = new RSAEngine();
+		eng.init(false, priKey);
+
+		return decrypt(input, eng);
+	}
+
+	public byte[] encrypt(String inputFile, byte[] keyData) {
+		RSAKeyParameters pubKey = readKeyData(new String(keyData), false);
+		RSAEngine eng = new RSAEngine();
+		eng.init(true, pubKey);
+		byte[] data = null;
+		try {
+			FileInputStream fstream = new FileInputStream(inputFile);
+			DataInputStream in = new DataInputStream(fstream);
+
+			in.read(data);
+			in.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return encrypt(data, eng);
+	}
+
+	public byte[] encrypt(byte[] input, byte[] keyData) {
+		RSAKeyParameters pubKey = readKeyData(new String(keyData), true);
+		RSAEngine eng = new RSAEngine();
+		eng.init(true, pubKey);
+
+		return encrypt(input, eng);
+	}
+	
+	public static void main(String[] args){
+		RSA r1 = new RSA();
+		r1.realtest(128);
+		
+		
+		
+	}
+
+}
+
